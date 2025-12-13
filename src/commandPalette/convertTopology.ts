@@ -740,10 +740,11 @@ export const writePipelineSourceToFile = (
     // Create the source configuration with static routing
     const scopeSuffix = scope === "logs" ? "-logs" : "-metrics";
     const displaySuffix = scope === "logs" ? " logs" : " metric";
+    const cleanedName = cleanExtensionName(extension.name);
     const source = {
-      displayName: `${extension.name}${displaySuffix} source`,
+      displayName: `${cleanedName}${displaySuffix} source`,
       staticRouting: {
-        pipelineId: `${extension.name}${scopeSuffix}`,
+        pipelineId: `${cleanedName}${scopeSuffix}`,
       },
     };
 
