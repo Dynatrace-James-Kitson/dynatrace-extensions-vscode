@@ -52,7 +52,7 @@ import logger from "../utils/logging";
 import { getPythonVenvOpts } from "../utils/otherExtensions";
 import { runCommand } from "../utils/subprocesses";
 import { showQuickPick } from "../utils/vscode";
-import { loadSchemas } from "./loadSchemas";
+import { configureOpenPipelineJsonSchemas, loadSchemas } from "./loadSchemas";
 
 const logTrace = ["commandPalette", "initWorkspace"];
 
@@ -164,11 +164,9 @@ export async function initWorkspace(dt: Dynatrace, callback?: () => unknown) {
         }
       } else {
         logger.notify("INFO", `Using cached schema version ${schemaVersion}`, ...fnLogTrace);
+        const schemaLocation = path.join(context.globalStorageUri.fsPath, schemaVersion);
         const mainSchema = vscode.Uri.file(
-          path.join(
-            path.join(context.globalStorageUri.fsPath, schemaVersion),
-            "extension.schema.json",
-          ),
+          path.join(schemaLocation, "extension.schema.json"),
         ).toString();
         vscode.workspace
           .getConfiguration()
@@ -176,6 +174,9 @@ export async function initWorkspace(dt: Dynatrace, callback?: () => unknown) {
           .then(undefined, () => {
             logger.error("Could not update configuration yaml.schemas", ...fnLogTrace);
           });
+
+        // Configure JSON schemas for OpenPipeline files
+        configureOpenPipelineJsonSchemas(schemaLocation);
       }
 
       // Now that the workspace exists, storage can be created
@@ -582,8 +583,9 @@ async function changeSchemaExampleExtension(fnLogTrace: string[]) {
     logger.notify("ERROR", "Could not get schema");
     return false;
   }
+  const schemaLocation = path.join(context.globalStorageUri.fsPath, schemaVersion);
   const mainSchema = vscode.Uri.file(
-    path.join(path.join(context.globalStorageUri.fsPath, schemaVersion), "extension.schema.json"),
+    path.join(schemaLocation, "extension.schema.json"),
   ).toString();
   vscode.workspace
     .getConfiguration()
@@ -591,6 +593,9 @@ async function changeSchemaExampleExtension(fnLogTrace: string[]) {
     .then(undefined, () => {
       logger.error("Could not update configuration yaml.schemas", ...fnLogTrace);
     });
+
+  // Configure JSON schemas for OpenPipeline files
+  configureOpenPipelineJsonSchemas(schemaLocation);
   try {
     // If extension.yaml already exists, update the version there too
     const extensionFile = getExtensionFilePath();
