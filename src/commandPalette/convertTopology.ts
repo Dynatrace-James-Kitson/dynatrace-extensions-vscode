@@ -126,8 +126,13 @@ export const convertTopologyToOpenPipeline = async (
     throw Error("Extension does not have a topology section.");
   }
 
-  let metricsProcessors: OpenPipelineProcessor[] = [];
-  let logsProcessors: OpenPipelineProcessor[] = [];
+  let metricsNodeProcessors: OpenPipelineProcessor[] = [];
+  let logsNodeProcessors: OpenPipelineProcessor[] = [];
+  let metricsEdgeProcessors: OpenPipelineProcessor[] = [];
+  let logsEdgeProcessors: OpenPipelineProcessor[] = [];
+  // Map to track old type names to new type names
+  // Example: dt.entity.cloud_application -> CLOUD_APPLICATION
+  const typeNameMapping = new Map<string, string>();
 
   // Convert topology types to smartscape node processors
   if (extension.topology.types) {
@@ -135,16 +140,22 @@ export const convertTopologyToOpenPipeline = async (
       extension.topology.types,
       extension.metrics,
       inputCallback,
+      typeNameMapping,
     );
-    metricsProcessors = result.metricsProcessors;
-    logsProcessors = result.logsProcessors;
+    metricsNodeProcessors = result.metricsProcessors;
+    logsNodeProcessors = result.logsProcessors;
   }
 
-  // TODO: Convert topology relationships to smartscape edge processors
-  // if (extension.topology.relationships) {
-  //   const edgeProcessors = await convertTopologyRelationships(extension.topology.relationships);
-  //   processors.push(...edgeProcessors);
-  // }
+  // Convert topology relationships to smartscape edge processors
+  if (extension.topology.relationships) {
+    const edgeResult = await createProcessorsFromRelationships(
+      extension.topology.relationships,
+      typeNameMapping,
+      inputCallback,
+    );
+    metricsEdgeProcessors = edgeResult.metricsProcessors;
+    logsEdgeProcessors = edgeResult.logsProcessors;
+  }
 
   // Create the OpenPipeline configuration
   const cleanedName = cleanExtensionName(extension.name);
@@ -156,16 +167,28 @@ export const convertTopologyToOpenPipeline = async (
   };
 
   // Create metrics pipeline if we have metrics processors
-  if (metricsProcessors.length > 0) {
+  if (metricsNodeProcessors.length > 0 || metricsEdgeProcessors.length > 0) {
     const customId = `${cleanedName}-metrics`;
-    const displayName = `${cleanedName} - Pipeline`;
+    const displayName = `extension: ${cleanedName}`;
     pipelineDocs.metricPipeline = {
       customId,
       displayName,
-      smartscapeNodeExtraction: {
-        processors: metricsProcessors,
-      },
     };
+
+    // Add node extraction if we have node processors
+    if (metricsNodeProcessors.length > 0) {
+      pipelineDocs.metricPipeline.smartscapeNodeExtraction = {
+        processors: metricsNodeProcessors,
+      };
+    }
+
+    // Add edge extraction if we have edge processors
+    if (metricsEdgeProcessors.length > 0) {
+      pipelineDocs.metricPipeline.smartscapeEdgeExtraction = {
+        processors: metricsEdgeProcessors,
+      };
+    }
+
     pipelineExtensionYaml.pipelines.push({
       displayName,
       pipelinePath: "openpipeline/metric.pipeline.json",
@@ -179,16 +202,28 @@ export const convertTopologyToOpenPipeline = async (
   }
 
   // Create logs pipeline if we have logs processors
-  if (logsProcessors.length > 0) {
+  if (logsNodeProcessors.length > 0 || logsEdgeProcessors.length > 0) {
     const customId = `${cleanedName}-logs`;
-    const displayName = `${cleanedName} - Pipeline`;
+    const displayName = `extension: ${cleanedName}`;
     pipelineDocs.logPipeline = {
       customId,
       displayName,
-      smartscapeNodeExtraction: {
-        processors: logsProcessors,
-      },
     };
+
+    // Add node extraction if we have node processors
+    if (logsNodeProcessors.length > 0) {
+      pipelineDocs.logPipeline.smartscapeNodeExtraction = {
+        processors: logsNodeProcessors,
+      };
+    }
+
+    // Add edge extraction if we have edge processors
+    if (logsEdgeProcessors.length > 0) {
+      pipelineDocs.logPipeline.smartscapeEdgeExtraction = {
+        processors: logsEdgeProcessors,
+      };
+    }
+
     pipelineExtensionYaml.pipelines.push({
       displayName,
       pipelinePath: "openpipeline/log.pipeline.json",
@@ -202,7 +237,7 @@ export const convertTopologyToOpenPipeline = async (
   }
 
   logger.info(
-    `Created pipeline with ${metricsProcessors.length} metrics and ${logsProcessors.length} logs processors`,
+    `Created pipeline with ${metricsNodeProcessors.length} metrics nodes, ${metricsEdgeProcessors.length} metrics edges, ${logsNodeProcessors.length} logs nodes, ${logsEdgeProcessors.length} logs edges`,
   );
   return {
     pipelineExtensionYaml,
@@ -211,16 +246,239 @@ export const convertTopologyToOpenPipeline = async (
 };
 
 /**
+ * Mapping from old relationship types to new edge types
+ */
+const RELATIONSHIP_TYPE_MAPPING: Record<string, string> = {
+  CHILD_OF: "belongs_to",
+  RUNS_ON: "runs_on",
+  INSTANCE_OF: "instance_of",
+  PART_OF: "is_part_of",
+  CALLS: "calls",
+  SAME_AS: "same_as",
+};
+
+/**
+ * Converts topology relationships to OpenPipeline smartscape edge processors
+ * @param relationships - Array of relationships from extension.yaml topology section
+ * @param typeNameMapping - Map of old type names to new type names
+ * @param inputCallback - Callback function for getting user input
+ * @returns Separated metrics and logs processors
+ */
+export const createProcessorsFromRelationships = async (
+  relationships: Array<{
+    fromType: string;
+    toType: string;
+    typeOfRelation: string;
+    sources: Array<{ sourceType: string; condition?: string }>;
+  }>,
+  typeNameMapping: Map<string, string>,
+  inputCallback: InputCallback,
+): Promise<{
+  metricsProcessors: OpenPipelineProcessor[];
+  logsProcessors: OpenPipelineProcessor[];
+}> => {
+  const metricsProcessors: OpenPipelineProcessor[] = [];
+  const logsProcessors: OpenPipelineProcessor[] = [];
+  let metricsCounter = 0;
+  let logsCounter = 0;
+
+  for (const relationship of relationships) {
+    // Try to get the mapped type names, or ask the user if not found
+    let fromTypeName = typeNameMapping.get(relationship.fromType);
+    if (!fromTypeName) {
+      const userInput = await inputCallback(
+        `Enter new name for source type "${relationship.fromType}"`,
+        suggestNewTypeName(relationship.fromType),
+      );
+      if (!userInput) {
+        throw Error("User cancelled the operation");
+      }
+      fromTypeName = userInput;
+      typeNameMapping.set(relationship.fromType, fromTypeName);
+    }
+
+    let toTypeName = typeNameMapping.get(relationship.toType);
+    if (!toTypeName) {
+      const userInput = await inputCallback(
+        `Enter new name for target type "${relationship.toType}"`,
+        suggestNewTypeName(relationship.toType),
+      );
+      if (!userInput) {
+        throw Error("User cancelled the operation");
+      }
+      toTypeName = userInput;
+      typeNameMapping.set(relationship.toType, toTypeName);
+    }
+
+    // Map the old relationship type to the new edge type, allowing user to override
+    const suggestedEdgeType = RELATIONSHIP_TYPE_MAPPING[relationship.typeOfRelation];
+    if (!suggestedEdgeType) {
+      throw Error(
+        `Unknown relationship type: ${relationship.typeOfRelation}. Expected one of: ${Object.keys(RELATIONSHIP_TYPE_MAPPING).join(", ")}`,
+      );
+    }
+
+    const edgeTypeInput = await inputCallback(
+      `Enter edge type for "${relationship.fromType}" → "${relationship.toType}" (was ${relationship.typeOfRelation})`,
+      suggestedEdgeType,
+    );
+
+    if (!edgeTypeInput) {
+      throw Error("User cancelled the operation");
+    }
+
+    const edgeType = edgeTypeInput;
+
+    // Process each source
+    for (const source of relationship.sources) {
+      if (source.sourceType === "Metrics") {
+        const processor = await processMetricsRelationship(
+          relationship,
+          fromTypeName,
+          toTypeName,
+          edgeType,
+          source,
+          inputCallback,
+          metricsCounter++,
+        );
+        metricsProcessors.push(processor);
+      } else if (source.sourceType === "Logs") {
+        const processor = await processLogsRelationship(
+          relationship,
+          fromTypeName,
+          toTypeName,
+          edgeType,
+          source,
+          inputCallback,
+          logsCounter++,
+        );
+        logsProcessors.push(processor);
+      }
+    }
+  }
+
+  return { metricsProcessors, logsProcessors };
+};
+
+/**
+ * Processes a Metrics source relationship and creates a smartscape edge processor
+ */
+const processMetricsRelationship = async (
+  relationship: {
+    fromType: string;
+    toType: string;
+    typeOfRelation: string;
+  },
+  fromTypeName: string,
+  toTypeName: string,
+  edgeType: string,
+  source: { sourceType: string; condition?: string },
+  inputCallback: InputCallback,
+  counter: number,
+): Promise<OpenPipelineProcessor> => {
+  // Ask user for matcher condition
+  const suggestedMatcher = convertConditionToMatcher(source.condition);
+  const matcher = await inputCallback(
+    `Enter matcher condition for relationship "${relationship.fromType}" → "${relationship.toType}" (${edgeType})`,
+    suggestedMatcher,
+  );
+
+  if (!matcher) {
+    throw Error("User cancelled the operation");
+  }
+
+  return createSmartscapeEdgeProcessor(
+    fromTypeName,
+    toTypeName,
+    edgeType,
+    matcher,
+    source,
+    counter,
+  );
+};
+
+/**
+ * Processes a Logs source relationship and creates a smartscape edge processor
+ */
+const processLogsRelationship = async (
+  relationship: {
+    fromType: string;
+    toType: string;
+    typeOfRelation: string;
+  },
+  fromTypeName: string,
+  toTypeName: string,
+  edgeType: string,
+  source: { sourceType: string; condition?: string },
+  inputCallback: InputCallback,
+  counter: number,
+): Promise<OpenPipelineProcessor> => {
+  // For logs, we typically use a simpler matcher
+  const suggestedMatcher = source.condition
+    ? convertConditionToMatcher(source.condition)
+    : "isNotNull(content)";
+
+  const matcher = await inputCallback(
+    `Enter matcher condition for relationship "${relationship.fromType}" → "${relationship.toType}" (${edgeType}) (Logs)`,
+    suggestedMatcher,
+  );
+
+  if (!matcher) {
+    throw Error("User cancelled the operation");
+  }
+
+  return createSmartscapeEdgeProcessor(
+    fromTypeName,
+    toTypeName,
+    edgeType,
+    matcher,
+    source,
+    counter,
+  );
+};
+
+/**
+ * Creates a smartscape edge processor for OpenPipeline
+ */
+const createSmartscapeEdgeProcessor = (
+  sourceType: string,
+  targetType: string,
+  edgeType: string,
+  matcher: string,
+  source: { sourceType: string },
+  counter: number,
+): OpenPipelineProcessor => {
+  const processorId = `${sourceType}_to_${targetType}_${edgeType}_${source.sourceType}_${counter}`;
+  const description = `Create ${edgeType} relationship from ${sourceType} to ${targetType}`;
+
+  return {
+    id: processorId,
+    type: "smartscapeEdge",
+    matcher,
+    description,
+    smartscapeEdge: {
+      sourceType,
+      sourceIdFieldName: "node_id",
+      edgeType,
+      targetType,
+      targetIdFieldName: "node_id",
+    },
+  };
+};
+
+/**
  * Converts topology types to OpenPipeline smartscape node processors
  * @param types - Array of topology types from extension.yaml
  * @param metrics - Optional array of metrics for finding matching metric keys
  * @param inputCallback - Callback function for getting user input
+ * @param typeNameMapping - Optional map to track old type names to new type names
  * @returns Array of OpenPipeline processors
  */
 export const createProcessorsFromTopology = async (
   types: TopologyType[],
   metrics: MetricMetadata[] | undefined,
   inputCallback: InputCallback,
+  typeNameMapping?: Map<string, string>,
 ): Promise<{
   metricsProcessors: OpenPipelineProcessor[];
   logsProcessors: OpenPipelineProcessor[];
@@ -241,6 +499,11 @@ export const createProcessorsFromTopology = async (
 
     if (!newName) {
       throw Error("User cancelled the operation");
+    }
+
+    // Store the mapping if provided
+    if (typeNameMapping) {
+      typeNameMapping.set(type.name, newName);
     }
 
     // Process each rule in the type
@@ -792,10 +1055,9 @@ export const writePipelineSourceToFile = (
 
     // Create the source configuration with static routing
     const scopeSuffix = scope === "logs" ? "-logs" : "-metrics";
-    const displaySuffix = scope === "logs" ? " logs" : " metric";
     const cleanedName = cleanExtensionName(extension.name);
     const source = {
-      displayName: `${cleanedName}${displaySuffix} source`,
+      displayName: `extension: ${cleanedName}`,
       staticRouting: {
         pipelineId: `${cleanedName}${scopeSuffix}`,
       },
