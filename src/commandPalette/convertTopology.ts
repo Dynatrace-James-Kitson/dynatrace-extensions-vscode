@@ -61,10 +61,37 @@ export async function createSmartscapeTopologyWorkflow() {
     return;
   }
 
+  // Ask user whether to select each detail or use calculated values
+  const inputModeChoice = await vscode.window.showQuickPick(
+    [
+      {
+        label: "Input topology detail",
+        description: "Manually review and confirm each name, matcher, and configuration",
+        value: "manual",
+      },
+      {
+        label: "Use calculated values",
+        description: "Automatically use suggested values without prompts",
+        value: "auto",
+      },
+    ],
+    {
+      placeHolder: "How would you like to configure the topology?",
+      title: "Smartscape Topology Configuration",
+    },
+  );
+
+  if (!inputModeChoice) {
+    logger.info("User cancelled the operation", ...logTrace);
+    return;
+  }
+
+  const inputCallback = inputModeChoice.value === "auto" ? autoInputCallback : vscodeInputCallback;
+
   try {
     const { pipelineExtensionYaml, pipelineDocs } = await convertTopologyToOpenPipeline(
       extension,
-      vscodeInputCallback,
+      inputCallback,
     );
 
     const files: string[] = [];
@@ -93,7 +120,9 @@ export async function createSmartscapeTopologyWorkflow() {
 
     void vscode.window.showInformationMessage(message);
   } catch (error) {
-    logger.error(`Failed to create Smartscape topology: ${(error as Error).message}`, ...logTrace);
+    const errorMessage = (error as Error).message;
+    logger.error(`Failed to create Smartscape topology: ${errorMessage}`, ...logTrace);
+    void vscode.window.showErrorMessage(`Failed to create Smartscape topology: ${errorMessage}`);
   }
 }
 
@@ -905,13 +934,6 @@ const createSmartscapeNodeProcessor = (
   matcher: string,
   counter: number,
 ): OpenPipelineProcessor => {
-  // Validate that instanceNamePattern exists
-  if (rule.instanceNamePattern === undefined) {
-    throw new Error(
-      `Rule for type "${type.name}" is missing instanceNamePattern. All topology rules must have an instanceNamePattern defined.`,
-    );
-  }
-
   // Build ID components from idPattern if it exists
   let idComponents: Array<{ idComponent: string; referencedFieldName: string }> = [];
 
@@ -943,7 +965,7 @@ const createSmartscapeNodeProcessor = (
   }
 
   // Build fields to extract from attributes, filtering out blocked fields
-  const fieldsToExtract = rule.attributes
+  const fieldsToExtract = (rule.attributes ?? [])
     .filter(attr => !BLOCKED_FIELDS.includes(attr.key))
     .map(attr => ({
       fieldName: attr.key,
