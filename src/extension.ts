@@ -39,7 +39,7 @@ import { activateExtensionWorkflow } from "./commandPalette/activateExtension";
 import { buildExtensionWorkflow, fastModeBuildWorkflow } from "./commandPalette/buildExtension";
 import { convertJmxExtensionWorkflow } from "./commandPalette/convertJMXExtension";
 import { convertPythonExtensionWorkflow } from "./commandPalette/convertPythonExtension";
-import { createSmartscapeTopologyWorkflow } from "./commandPalette/convertTopologyWorkflow";
+import { createSmartscapeTopologyWorkflow } from "./commandPalette/convertTopology";
 import { createAlertWorkflow } from "./commandPalette/createAlert";
 import { createMonitoringConfigurationWorkflow } from "./commandPalette/createConfiguration";
 import { createDashboardWorkflow } from "./commandPalette/createDashboard";

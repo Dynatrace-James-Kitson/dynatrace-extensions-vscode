@@ -21,8 +21,8 @@ import {
   convertTopologyToOpenPipeline,
   createProcessorsFromTopology,
   InputCallback,
+  autoInputCallback,
 } from "../../../../src/commandPalette/convertTopology";
-import { autoInputCallback } from "../../../../src/commandPalette/convertTopologyCallbacks";
 import {
   OpenPipelineFieldsToExtract,
   OpenPipelineIdComponent,
