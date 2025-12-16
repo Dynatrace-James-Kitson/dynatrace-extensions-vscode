@@ -52,7 +52,7 @@ import logger from "../utils/logging";
 import { getPythonVenvOpts } from "../utils/otherExtensions";
 import { runCommand } from "../utils/subprocesses";
 import { showQuickPick } from "../utils/vscode";
-import { configureOpenPipelineJsonSchemas, loadSchemas } from "./loadSchemas";
+import { configureOpenPipelineJSONSchemas, loadSchemas } from "./loadSchemas";
 
 const logTrace = ["commandPalette", "initWorkspace"];
 
@@ -176,7 +176,7 @@ export async function initWorkspace(dt: Dynatrace, callback?: () => unknown) {
           });
 
         // Configure JSON schemas for OpenPipeline files
-        configureOpenPipelineJsonSchemas(schemaLocation);
+        configureOpenPipelineJSONSchemas(schemaLocation);
       }
 
       // Now that the workspace exists, storage can be created
@@ -593,7 +593,7 @@ async function changeSchemaExampleExtension(fnLogTrace: string[]) {
     });
 
   // Configure JSON schemas for OpenPipeline files
-  configureOpenPipelineJsonSchemas(schemaLocation);
+  configureOpenPipelineJSONSchemas(schemaLocation);
   try {
     // If extension.yaml already exists, update the version there too
     const extensionFile = getExtensionFilePath();

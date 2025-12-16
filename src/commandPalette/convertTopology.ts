@@ -1091,7 +1091,10 @@ export const writePipelineSourceToFile = (
 
     logger.info(`${scope} source written to ${sourceFile}`, ...logTrace);
   } catch (error) {
-    logger.error(`Failed to write ${scope} source to file: ${(error as Error).message}`, ...logTrace);
+    logger.error(
+      `Failed to write ${scope} source to file: ${(error as Error).message}`,
+      ...logTrace,
+    );
     throw error;
   }
 };

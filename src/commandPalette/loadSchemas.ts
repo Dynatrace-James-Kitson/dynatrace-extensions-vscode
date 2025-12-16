@@ -33,7 +33,7 @@ const logTrace = ["commandPalette", "loadSchemas"];
  * These schemas are downloaded alongside the extension schema in the global storage
  * @param schemaLocation - The path to the schema version folder (e.g., globalStorage/1.900.0/)
  */
-export function configureOpenPipelineJSONSchemas(schemaLocation: string): void {
+export const configureOpenPipelineJSONSchemas = (schemaLocation: string): void => {
   const fnLogTrace = [...logTrace, "configureOpenPipelineJSONSchemas"];
 
   const pipelineSchemaPath = vscode.Uri.file(
@@ -63,7 +63,7 @@ export function configureOpenPipelineJSONSchemas(schemaLocation: string): void {
     });
 
   logger.debug("OpenPipeline JSON schemas configured", ...fnLogTrace);
-}
+};
 
 export const loadSchemasWorkflow = async () => {
   if (await checkTenantConnected()) {
@@ -140,7 +140,7 @@ export async function loadSchemas(dt: Dynatrace): Promise<boolean> {
   });
 
   // Configure JSON schemas for OpenPipeline files
-  configureOpenPipelineJsonSchemas(location);
+  configureOpenPipelineJSONSchemas(location);
 
   try {
     // If extension.yaml already exists, update the version there too
