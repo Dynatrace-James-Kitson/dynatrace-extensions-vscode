@@ -1050,7 +1050,7 @@ export const writePipelineSourceToFile = (
   extension: ExtensionStub,
   scope: "metrics" | "logs" = "metrics",
 ): void => {
-  const logTrace = ["commandPalette", "writeMetricSourceToFile"];
+  const logTrace = ["commandPalette", "writePipelineSourceToFile"];
 
   try {
     // Get the extension file path and derive the openpipeline directory
