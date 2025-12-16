@@ -584,9 +584,7 @@ async function changeSchemaExampleExtension(fnLogTrace: string[]) {
     return false;
   }
   const schemaLocation = path.join(context.globalStorageUri.fsPath, schemaVersion);
-  const mainSchema = vscode.Uri.file(
-    path.join(schemaLocation, "extension.schema.json"),
-  ).toString();
+  const mainSchema = vscode.Uri.file(path.join(schemaLocation, "extension.schema.json")).toString();
   vscode.workspace
     .getConfiguration()
     .update("yaml.schemas", { [mainSchema]: "extension.yaml" })
