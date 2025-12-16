@@ -33,8 +33,8 @@ const logTrace = ["commandPalette", "loadSchemas"];
  * These schemas are downloaded alongside the extension schema in the global storage
  * @param schemaLocation - The path to the schema version folder (e.g., globalStorage/1.900.0/)
  */
-export function configureOpenPipelineJsonSchemas(schemaLocation: string): void {
-  const fnLogTrace = [...logTrace, "configureOpenPipelineJsonSchemas"];
+export function configureOpenPipelineJSONSchemas(schemaLocation: string): void {
+  const fnLogTrace = [...logTrace, "configureOpenPipelineJSONSchemas"];
 
   const pipelineSchemaPath = vscode.Uri.file(
     path.join(schemaLocation, "openpipeline.pipeline.schema.json"),
