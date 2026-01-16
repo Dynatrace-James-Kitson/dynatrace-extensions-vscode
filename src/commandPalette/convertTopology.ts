@@ -204,7 +204,7 @@ export const convertTopologyToOpenPipeline = async (
   // Create metrics pipeline if we have metrics processors
   if (metricsNodeProcessors.length > 0 || metricsEdgeProcessors.length > 0) {
     const customId = `${cleanedName}-metrics`;
-    const displayName = `extension: ${cleanedName}`;
+    const displayName = `ext:${cleanedName}`;
     pipelineDocs.metricPipeline = {
       customId,
       displayName,
@@ -239,7 +239,7 @@ export const convertTopologyToOpenPipeline = async (
   // Create logs pipeline if we have logs processors
   if (logsNodeProcessors.length > 0 || logsEdgeProcessors.length > 0) {
     const customId = `${cleanedName}-logs`;
-    const displayName = `extension: ${cleanedName}`;
+    const displayName = `ext:${cleanedName}`;
     pipelineDocs.logPipeline = {
       customId,
       displayName,
@@ -1085,7 +1085,7 @@ export const writePipelineSourceToFile = (
     const scopeSuffix = scope === "logs" ? "-logs" : "-metrics";
     const cleanedName = cleanExtensionName(extension.name);
     const source = {
-      displayName: `extension: ${cleanedName}`,
+      displayName: `ext:${cleanedName}`,
       staticRouting: {
         pipelineId: `${cleanedName}${scopeSuffix}`,
       },
