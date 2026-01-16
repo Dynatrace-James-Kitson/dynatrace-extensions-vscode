@@ -33,6 +33,12 @@ import logger from "../utils/logging";
 // Fields that are not allowed to be extracted in OpenPipeline
 const BLOCKED_FIELDS = ["dt.security_context"];
 
+// OpenPipeline file names
+const METRIC_PIPELINE_FILE = "metrics.pipeline.json";
+const METRIC_SOURCE_FILE = "metrics.source.json";
+const LOG_PIPELINE_FILE = "logs.pipeline.json";
+const LOG_SOURCE_FILE = "logs.source.json";
+
 interface OpenPipelineDocs {
   metricPipeline?: OpenPipelinePipeline;
   logPipeline?: OpenPipelinePipeline;
@@ -100,14 +106,14 @@ export async function createSmartscapeTopologyWorkflow() {
     if (pipelineDocs.metricPipeline) {
       writePipelineToFile(pipelineDocs.metricPipeline, "metrics");
       writePipelineSourceToFile(extension, "metrics");
-      files.push("metric.pipeline.json", "metric.source.json");
+      files.push(METRIC_PIPELINE_FILE, METRIC_SOURCE_FILE);
     }
 
     // Write logs pipeline and source if present
     if (pipelineDocs.logPipeline) {
       writePipelineToFile(pipelineDocs.logPipeline, "logs");
       writePipelineSourceToFile(extension, "logs");
-      files.push("log.pipeline.json", "log.source.json");
+      files.push(LOG_PIPELINE_FILE, LOG_SOURCE_FILE);
     }
 
     updateExtensionYaml(pipelineExtensionYaml);
@@ -220,12 +226,12 @@ export const convertTopologyToOpenPipeline = async (
 
     pipelineExtensionYaml.pipelines.push({
       displayName,
-      pipelinePath: "openpipeline/metric.pipeline.json",
+      pipelinePath: `openpipeline/${METRIC_PIPELINE_FILE}`,
       configScope: "metrics",
     });
     pipelineExtensionYaml.sources.push({
       displayName,
-      sourcePath: "openpipeline/metric.source.json",
+      sourcePath: `openpipeline/${METRIC_SOURCE_FILE}`,
       configScope: "metrics",
     });
   }
@@ -255,12 +261,12 @@ export const convertTopologyToOpenPipeline = async (
 
     pipelineExtensionYaml.pipelines.push({
       displayName,
-      pipelinePath: "openpipeline/log.pipeline.json",
+      pipelinePath: `openpipeline/${LOG_PIPELINE_FILE}`,
       configScope: "logs",
     });
     pipelineExtensionYaml.sources.push({
       displayName,
-      sourcePath: "openpipeline/log.source.json",
+      sourcePath: `openpipeline/${LOG_SOURCE_FILE}`,
       configScope: "logs",
     });
   }
@@ -1017,7 +1023,7 @@ export const writePipelineToFile = (
 
     const extensionDir = dirname(extensionFile);
     const openpipelineDir = join(extensionDir, "openpipeline");
-    const filename = scope === "logs" ? "log.pipeline.json" : "metric.pipeline.json";
+    const filename = scope === "logs" ? LOG_PIPELINE_FILE : METRIC_PIPELINE_FILE;
     const pipelineFile = join(openpipelineDir, filename);
 
     // Create openpipeline directory if it doesn't exist
@@ -1061,7 +1067,7 @@ export const writePipelineSourceToFile = (
 
     const extensionDir = dirname(extensionFile);
     const openpipelineDir = join(extensionDir, "openpipeline");
-    const filename = scope === "logs" ? "log.source.json" : "metric.source.json";
+    const filename = scope === "logs" ? LOG_SOURCE_FILE : METRIC_SOURCE_FILE;
     const sourceFile = join(openpipelineDir, filename);
 
     // Create openpipeline directory if it doesn't exist
