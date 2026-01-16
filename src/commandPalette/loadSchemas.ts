@@ -43,8 +43,22 @@ export const configureOpenPipelineJSONSchemas = (schemaLocation: string): void =
     path.join(schemaLocation, "openpipeline.source.schema.json"),
   ).toString();
 
-  // Configure json.schemas setting for any *.pipeline.json and *.source.json files
-  const jsonSchemas = [
+  // Get existing json.schemas configuration
+  const config = vscode.workspace.getConfiguration();
+  const existingSchemas =
+    config.get<Array<{ fileMatch: string[]; url: string }>>("json.schemas") || [];
+
+  // Remove any existing openpipeline schemas to avoid duplicates
+  const filteredSchemas = existingSchemas.filter(
+    schema =>
+      !schema.fileMatch.some(
+        match => match.endsWith(".pipeline.json") || match.endsWith(".source.json"),
+      ),
+  );
+
+  // Add our openpipeline schemas
+  const newSchemas = [
+    ...filteredSchemas,
     {
       fileMatch: ["*.pipeline.json"],
       url: pipelineSchemaPath,
@@ -55,9 +69,8 @@ export const configureOpenPipelineJSONSchemas = (schemaLocation: string): void =
     },
   ];
 
-  vscode.workspace
-    .getConfiguration()
-    .update("json.schemas", jsonSchemas, vscode.ConfigurationTarget.Workspace)
+  config
+    .update("json.schemas", newSchemas, vscode.ConfigurationTarget.Workspace)
     .then(undefined, () => {
       logger.error("Could not update configuration json.schemas", ...fnLogTrace);
     });
