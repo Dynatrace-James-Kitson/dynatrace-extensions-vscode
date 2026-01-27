@@ -26,7 +26,6 @@ import {
 import { createSingletonProvider } from "../utils/singleton";
 import { getBlockItemIndexAtLine, getParentBlocks } from "../utils/yamlParsing";
 import { buildMetricMetadataSnippet, indentSnippet } from "./utils/snippetBuildingUtils";
-import logging from "../utils/logging";
 
 /**
  * Provider for Code Actions that work with scraped Prometheus data to automatically
