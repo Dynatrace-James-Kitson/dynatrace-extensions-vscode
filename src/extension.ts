@@ -57,7 +57,6 @@ import {
   TEMP_CONFIG_DOC_SELECTOR,
 } from "./constants";
 import { getSnmpHoverProvider } from "./hover/snmpHover";
-import { registerDynatraceChatParticipant } from "./languageModel/chatParticipant";
 import { registerExtensionSchemasTool } from "./languageModel/extensionSchemasTool";
 import { getConnectionStatusBar } from "./statusBar/connection";
 import { getFastModeStatusBar } from "./statusBar/fastMode";
