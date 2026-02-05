@@ -57,6 +57,8 @@ import {
   TEMP_CONFIG_DOC_SELECTOR,
 } from "./constants";
 import { getSnmpHoverProvider } from "./hover/snmpHover";
+import { registerDynatraceChatParticipant } from "./languageModel/chatParticipant";
+import { registerExtensionSchemasTool } from "./languageModel/extensionSchemasTool";
 import { getConnectionStatusBar } from "./statusBar/connection";
 import { getFastModeStatusBar } from "./statusBar/fastMode";
 import { SimulatorManager } from "./statusBar/simulator";
@@ -119,6 +121,8 @@ export async function activate(context: vscode.ExtensionContext) {
     ...registerCodeLensProviders(),
     ...registerDiagnosticsEventListeners(),
     ...registerSerializersForPanels([ViewType.MetricResults, ViewType.WmiQueryResults]),
+    registerExtensionSchemasTool(context),
+    registerDynatraceChatParticipant(context),
     getFastModeStatusBar(),
     getConnectionStatusBar(),
     vscode.languages.registerHoverProvider(MANIFEST_DOC_SELECTOR, getSnmpHoverProvider()),
